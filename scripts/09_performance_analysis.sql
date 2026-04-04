@@ -16,6 +16,7 @@ SQL Functions Used:
 
 /* Analyze the yearly performance of products by comparing their sales 
 to both the average sales performance of the product and the previous year's sales */
+EXPLAIN ANALYSE
 WITH
     yearly_perf_product AS (
         SELECT
