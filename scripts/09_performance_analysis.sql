@@ -14,32 +14,32 @@ SQL Functions Used:
 ===============================================================================
 */
 
-/* Analyze the yearly performance of products by comparing their sales 
+/* Analyze the yearly performance of products by comparing their sales
 to both the average sales performance of the product and the previous year's sales */
 EXPLAIN ANALYSE
-WITH
-    yearly_perf_product AS (
-        SELECT
-            EXTRACT(YEAR FROM fs.order_date) AS date_year,
-            dp.product_name AS product_name,
-            SUM(fs.sales_amount) AS total_sales
-        FROM gold.fact_sales AS fs
-        LEFT JOIN gold.dim_products AS dp
-            ON fs.product_key = dp.product_key
-        GROUP BY
-            date_year,
-            dp.product_name
-                           ),
-    avg_and_prec_sales AS (
-        SELECT
-            date_year,
-            product_name,
-            total_sales,
-            AVG(total_sales) OVER (PARTITION BY product_name) AS avg_yearly,
-            COALESCE(LAG(total_sales) OVER (PARTITION BY product_name ORDER BY date_year),
-                     0) AS prec_year_sales
-        FROM yearly_perf_product
-                           )
+WITH yearly_perf_product AS (
+    SELECT
+        dp.product_name,
+        EXTRACT(YEAR FROM fs.order_date) AS date_year,
+        SUM(fs.sales_amount) AS total_sales
+    FROM gold.fact_sales AS fs
+    LEFT JOIN gold.dim_products AS dp
+        ON fs.product_key = dp.product_key
+    GROUP BY
+        date_year,
+        dp.product_name
+                            ),
+
+     avg_and_prec_sales AS (
+    SELECT
+        date_year,
+        product_name,
+        total_sales,
+        AVG(total_sales) OVER (PARTITION BY product_name) AS avg_yearly,
+        COALESCE(LAG(total_sales) OVER (PARTITION BY product_name ORDER BY date_year), 0) AS prec_year_sales
+    FROM yearly_perf_product
+                            )
+
 SELECT
     *,
     CASE
@@ -48,9 +48,15 @@ SELECT
         ELSE 'Average'
     END AS avg_change,
     CASE
-        WHEN total_sales > prec_year_sales AND prec_year_sales > 0 THEN 'Increasing'
-        WHEN total_sales > prec_year_sales AND prec_year_sales = 0 THEN 'Starting'
-        WHEN total_sales < prec_year_sales AND prec_year_sales > 0 THEN 'Decreasing'
+        WHEN
+            total_sales > prec_year_sales AND prec_year_sales > 0
+            THEN 'Increasing'
+        WHEN
+            total_sales > prec_year_sales AND prec_year_sales = 0
+            THEN 'Starting'
+        WHEN
+            total_sales < prec_year_sales AND prec_year_sales > 0
+            THEN 'Decreasing'
         WHEN total_sales = prec_year_sales THEN 'No Change'
     END AS year_sales_change,
     CASE
