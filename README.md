@@ -14,7 +14,6 @@ products, and sales performance.
 
 No additional ETL is required. The Gold layer dump is loaded automatically at container startup.
 
----
 
 ## 2. Objective
 
@@ -25,8 +24,6 @@ Develop SQL-based analytics to deliver detailed insights into:
 - **Sales Trends**: Monthly and yearly trends, cumulative totals, year-over-year growth
 
 These insights provide stakeholders with key business metrics to support strategic decision-making.
-
----
 
 ## 3. What This Project Covers
 
@@ -40,7 +37,6 @@ The analysis is organized as a structured progression, moving from raw discovery
 | Performance Analysis | 09 - 11 | YoY comparison, segmentation, contribution              |
 | Business Reports     | 12 - 13 | Consolidated customer and product reports with KPIs     |
 
----
 
 ## 4. Architecture and Why It Runs in Docker
 
@@ -65,7 +61,6 @@ Initialization file:
 
 - [init_db/data_warehouse_dump_gold.sql](init_db/data_warehouse_dump_gold.sql)
 
----
 
 ## 5. Data Model
 
@@ -79,146 +74,153 @@ The model consists of:
 - `gold.dim_products` — Product master data with category and subcategory classifications
 - `gold.fact_sales` — Transactional sales records linked to both dimensions via surrogate keys
 
----
 
 ## 6. [Data Catalog](docs/data_catalog.md)
 
-### gold.dim_customers
+### **gold.dim_customers**
 
-Stores one record per customer, enriched with demographic and geographic attributes.
+- **Purpose:** Stores customer details enriched with demographic and geographic data. Contains unique, cleaned, and
+  integrated information about customers from both CRM and ERP systems.
+- **Columns:**
 
-| Column          | Type    | Description                          |
-|-----------------|---------|--------------------------------------|
-| customer_key    | INTEGER | Surrogate key (primary key)          |
-| customer_id     | INTEGER | Natural key from source system       |
-| customer_number | VARCHAR | Customer identifier string           |
-| customer_name   | VARCHAR | Full name (first + last)             |
-| country         | VARCHAR | Country of residence                 |
-| marital_status  | VARCHAR | Married or Single                    |
-| gender          | VARCHAR | Male, Female, or n/a                 |
-| birthdate       | DATE    | Date of birth                        |
-| create_date     | DATE    | Date the customer record was created |
+| Column            | Data Type   | Description                                                                                   |
+|:------------------|:------------|:----------------------------------------------------------------------------------------------|
+| `customer_key`    | SERIAL      | Surrogate key (Primary Key) uniquely identifying each customer record in the dimension table. |
+| `customer_id`     | INT         | Unique numerical identifier assigned to each customer.                                        |
+| `customer_number` | TEXT        | Alphanumeric identifier representing the customer, used for tracking and referencing.         |
+| `first_name`      | TEXT        | The customer's first name, as recorded in the system.                                         |
+| `last_name`       | TEXT        | The customer's last name or family name.                                                      |
+| `gender`          | TEXT        | The gender of the customer (e.g., 'Male', 'Female', 'n/a').                                   |
+| `birthdate`       | DATE        | The date of birth of the customer, formatted as YYYY-MM-DD (e.g., 1971-10-06).                |
+| `marital_status`  | TEXT        | The marital status of the customer (e.g., 'Married', 'Single').                               |
+| `country`         | TEXT        | The country of residence for the customer (e.g., 'Australia').                                |
+| `create_date`     | DATE        | The date and time when the customer record was created in the system.                         |
+| `dwh_create_date` | TIMESTAMPTZ | Technical timestamp of record insertion into the DWH.                                         |
 
-### gold.dim_products
 
-Stores one record per active product (end date is NULL for current products).
+### **gold.dim_products**
 
-| Column              | Type    | Description                       |
-|---------------------|---------|-----------------------------------|
-| product_key         | INTEGER | Surrogate key (primary key)       |
-| product_id          | INTEGER | Natural key from source system    |
-| product_number      | VARCHAR | Product SKU code                  |
-| product_name        | VARCHAR | Full product name                 |
-| category_id         | VARCHAR | Category identifier               |
-| category            | VARCHAR | Top-level product category        |
-| subcategory         | VARCHAR | Product subcategory               |
-| product_line        | VARCHAR | Road, Mountain, Sport, or Touring |
-| product_cost        | INTEGER | Unit cost                         |
-| product_maintenance | VARCHAR | Maintenance classification        |
-| start_date          | DATE    | Product validity start date       |
+- **Purpose:** Provides information about the products and their attributes.
+- **Columns:**
 
-### gold.fact_sales
+| Column            | Data Type   | Description                                                                                          |
+|:------------------|:------------|:-----------------------------------------------------------------------------------------------------|
+| `product_key`     | SERIAL      | Surrogate key (Primary Key) uniquely identifying each product record in the product dimension table. |
+| `product_id`      | INT         | A unique identifier (Natural ID) assigned to the product for internal tracking and referencing.      |
+| `product_number`  | TEXT        | Business key (SKU) representing the product, often used for categorization or inventory.             |
+| `product_name`    | TEXT        | Descriptive name of the product, including key details such as type, color, and size.                |
+| `category_id`     | TEXT        | A unique identifier for the product's category, linking to its high-level classification.            |
+| `category`        | TEXT        | The broader classification of the product (e.g., Bikes, Components) to group related items.          |
+| `subcategory`     | TEXT        | A more detailed classification of the product within the category, such as product type.             |
+| `product_line`    | TEXT        | The specific product line or series to which the product belongs (e.g., Road, Mountain).             |
+| `cost`            | NUMERIC     | The cost or base price of the product, measured in monetary units.                                   |
+| `maintenance`     | TEXT        | Indicates whether the product requires maintenance (e.g., 'Yes', 'No').                              |
+| `start_date`      | DATE        | The date when the product became available for sale or use, stored in the source system.             |
+| `dwh_create_date` | TIMESTAMPTZ | Technical timestamp of record insertion into the DWH.                                                |
 
-Stores one record per line item in each sales order.
 
-| Column        | Type    | Description                     |
-|---------------|---------|---------------------------------|
-| order_number  | VARCHAR | Sales order identifier          |
-| product_key   | INTEGER | Foreign key to dim_products     |
-| customer_key  | INTEGER | Foreign key to dim_customers    |
-| order_date    | DATE    | Date the order was placed       |
-| shipping_date | DATE    | Date the order was shipped      |
-| due_date      | DATE    | Date the order was due          |
-| sales_amount  | INTEGER | Total revenue for the line item |
-| quantity      | INTEGER | Number of units sold            |
-| price         | INTEGER | Unit price at time of sale      |
+### **gold.fact_sales**
 
----
+- **Purpose:** Stores transactional sales data for analytical purposes.
+- **Columns:**
+
+| Column            | Data Type   | Description                                                                           |
+|:------------------|:------------|:--------------------------------------------------------------------------------------|
+| `order_number`    | TEXT        | A unique alphanumeric identifier for each sales order (e.g., 'SO54496').              |
+| `product_key`     | INT         | Surrogate key linking the order to the product dimension table `gold.dim_products`.   |
+| `customer_key`    | INT         | Surrogate key linking the order to the customer dimension table `gold.dim_customers`. |
+| `order_date`      | DATE        | The date when the order was placed                                                    |
+| `shipping_date`   | DATE        | The date when the order was shipped to the customer.                                  |
+| `due_date`        | DATE        | The date when the order payment was due.                                              |
+| `sales_amount`    | NUMERIC     | The total monetary value of the sale for the line item.                               |
+| `quantity`        | INT         | The number of units of the product ordered for the line item (e.g., 1).               |
+| `price`           | NUMERIC     | The price per unit of the product for the line item.                                  |
+| `dwh_create_date` | TIMESTAMPTZ | Technical timestamp of record insertion into the DWH.                                 |
+
 
 ## 7. Analysis Scripts
 
-### 01 — [Database Exploration](scripts/01_database_exploration.sql)
+- 01 — [Database Exploration](scripts/01_database_exploration.sql)
 
-Structural discovery of the database schema. Lists all tables from `INFORMATION_SCHEMA.TABLES` and retrieves column
+  Structural discovery of the database schema. Lists all tables from `INFORMATION_SCHEMA.TABLES` and retrieves column
 metadata for the customer dimension. Entry point for any new analyst joining the project.
 
-### 02 — [Dimensions Exploration](scripts/02_dimensions_exploration.sql)
+- 02 — [Dimensions Exploration](scripts/02_dimensions_exploration.sql)
 
-Explores the unique values present in dimension tables. Lists distinct countries, product categories, subcategories, and
+  Explores the unique values present in dimension tables. Lists distinct countries, product categories, subcategories, and
 product names. Establishes what data domains exist before any aggregation begins.
 
-### 03 — [Date Range Exploration](scripts/03_date_range_exploration.sql)
+- 03 — [Date Range Exploration](scripts/03_date_range_exploration.sql)
 
-Calculates temporal boundaries of the dataset. Determines the first and last order dates, total duration in days,
+  Calculates temporal boundaries of the dataset. Determines the first and last order dates, total duration in days,
 months, and years. Also calculates the age distribution of customers using their birthdates to identify the oldest and
 youngest buyers.
 
-### 04 — [Measures Exploration](scripts/04_measures_exploration.sql)
+- 04 — [Measures Exploration](scripts/04_measures_exploration.sql)
 
-Calculates core business metrics: total sales revenue, total quantity sold, average selling price, count of distinct
+  Calculates core business metrics: total sales revenue, total quantity sold, average selling price, count of distinct
 orders, products, and customers. Outputs a unified business metrics report using `UNION ALL` to consolidate all KPIs in
 a single result set.
 
-### 05 — [Magnitude Analysis](scripts/05_magnitude_analysis.sql)
+- 05 — [Magnitude Analysis](scripts/05_magnitude_analysis.sql)
 
-Distribution analysis across key dimensions. Answers questions such as: How many customers are in each country? How does
+  Distribution analysis across key dimensions. Answers questions such as: How many customers are in each country? How does
 revenue distribute by product category? What is the average cost per category? Identifies where volume and value are
 concentrated.
 
-### 06 — [Ranking Analysis](scripts/06_ranking_analysis.sql)
+- 06 — [Ranking Analysis](scripts/06_ranking_analysis.sql)
 
-Identifies top and bottom performers using both simple `LIMIT` queries and advanced window functions (`RANK()`,
+  Identifies top and bottom performers using both simple `LIMIT` queries and advanced window functions (`RANK()`,
 `DENSE_RANK()`, `ROW_NUMBER()`). Ranks top 5 and bottom 5 products by revenue, top 10 customers by revenue, and bottom
 3 customers by order count. Uses CTEs for clean query structure.
 
-### 07 — [Change Over Time Analysis](scripts/07_change_over_time_analysis.sql)
+- 07 — [Change Over Time Analysis](scripts/07_change_over_time_analysis.sql)
 
-Time-series analysis of monthly sales performance. Groups sales by year and month using both `EXTRACT()` and
+  Time-series analysis of monthly sales performance. Groups sales by year and month using both `EXTRACT()` and
 `DATE_TRUNC()` approaches. Enables trend identification and seasonality detection across the full date range of the
 dataset.
 
-### 08 — [Cumulative Analysis](scripts/08_cumulative_analysis.sql)
+- 08 — [Cumulative Analysis](scripts/08_cumulative_analysis.sql)
 
-Calculates running totals and year-to-date (YTD) cumulative metrics. Uses `SUM() OVER (PARTITION BY year ORDER BY
+  Calculates running totals and year-to-date (YTD) cumulative metrics. Uses `SUM() OVER (PARTITION BY year ORDER BY
 month)` window functions to compute cumulative sales within each calendar year, making it easy to track pacing toward
 annual targets.
 
-### 09 — [Performance Analysis](scripts/09_performance_analysis.sql)
+- 09 — [Performance Analysis](scripts/09_performance_analysis.sql)
 
-Year-over-year product performance comparison. For each product, compares current year sales to the average across all
+  Year-over-year product performance comparison. For each product, compares current year sales to the average across all
 years (flagged as above/below/average) and to the prior year (flagged as increasing/decreasing/no change). Calculates
 the percentage change year-over-year. Uses `LAG()` window function, CTEs, and includes `EXPLAIN ANALYSE` for query
 optimization visibility.
 
-### 10 — [Data Segmentation](scripts/10_data_segmentation.sql)
+- 10 — [Data Segmentation](scripts/10_data_segmentation.sql)
 
-Customer and product categorization using business rules. Products are segmented into four cost tiers: Below 100,
+  Customer and product categorization using business rules. Products are segmented into four cost tiers: Below 100,
 100-500, 500-1000, and Above 1000. Customers are segmented into three tiers: VIP (12+ months of purchase history and
 more than 5000 EUR in total spending), Regular (12+ months, 5000 EUR or below), and New (less than 12 months of
 history). Uses `CASE` statements for segmentation logic.
 
-### 11 — [Part-to-Whole Analysis](scripts/11_part_to_whole_analysis.sql)
+- 11 — [Part-to-Whole Analysis](scripts/11_part_to_whole_analysis.sql)
 
-Contribution analysis showing each product category's share of total revenue. Calculates both absolute revenue and
+  Contribution analysis showing each product category's share of total revenue. Calculates both absolute revenue and
 percentage contribution for every category. Implements two approaches: one using a CTE and one using inline window
 functions. Includes `EXPLAIN ANALYSE` for performance benchmarking.
 
-### 12 — [Customer Report](scripts/12_report_customers.sql)
+- 12 — [Customer Report](scripts/12_report_customers.sql)
 
-Comprehensive customer analytics report. Consolidates customer demographics with behavioral metrics into a single
+  Comprehensive customer analytics report. Consolidates customer demographics with behavioral metrics into a single
 output. Includes: age and age group (Under 20, 20-39, 40-59, 60+), customer segment (VIP, Regular, New), total orders,
 total sales, total quantity, total products purchased, lifespan in months, recency (months since last order), average
 order value, and average monthly spend. Uses multi-level CTEs and `NULLIF` for division-by-zero protection.
 
-### 13 — [Product Report](scripts/13_report_products.sql)
+- 13 — [Product Report](scripts/13_report_products.sql)
 
-Comprehensive product analytics report. Consolidates product attributes with performance metrics. Includes: category,
+  Comprehensive product analytics report. Consolidates product attributes with performance metrics. Includes: category,
 subcategory, cost, performance tier (High-Performer above 50K EUR, Mid-Range 10K-50K EUR, Low-Performer below 10K EUR),
 total orders, distinct customers, total revenue, total quantity, product lifespan in months, recency (months since last
 sale), average order revenue (AOR), and average monthly revenue. Uses multi-level CTEs and `NULLIF` for
 division-by-zero protection.
 
----
 
 ## 8. Project Structure
 
@@ -252,7 +254,6 @@ division-by-zero protection.
 `-- README.md                            # Main project documentation
 ```
 
----
 
 ## 9. How to Run the Project
 
@@ -306,7 +307,6 @@ You can execute the scripts using any SQL client (DBeaver, pgAdmin, DataGrip) co
 | User      | postgres       |
 | Password  | postgres       |
 
----
 
 ## 10. Key SQL Techniques Used
 
@@ -325,7 +325,6 @@ You can execute the scripts using any SQL client (DBeaver, pgAdmin, DataGrip) co
 | `SUM() OVER ()`, percentage calculation      | 11 — part-to-whole               |
 | Multi-level CTEs, `NULLIF`                   | 12, 13 — business reports        |
 
----
 
 ## 11. Relationship to Part 1
 
